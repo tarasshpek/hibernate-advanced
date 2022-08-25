@@ -1,5 +1,10 @@
 package com.example.demo;
 
+import com.example.demo.callbacks.ToListen;
+import com.example.demo.hierarchy.A;
+import com.example.demo.hierarchy.B;
+import com.example.demo.hierarchy.Root;
+import com.example.demo.locking.OptimisticLockingEntity;
 import com.example.demo.product.Category;
 import com.example.demo.product.Product;
 import com.example.demo.product.ProductId;
@@ -10,11 +15,17 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.persistence.EntityManager;
+import javax.persistence.LockModeType;
+import javax.persistence.OptimisticLockException;
+import javax.persistence.TypedQuery;
 import java.math.BigDecimal;
 import java.util.Arrays;
+import java.util.List;
 
 @RestController
 public class MyController {
@@ -81,6 +92,63 @@ public class MyController {
         Thread.sleep(2000L);
         teacher.getCourses().size();
         System.out.println("Courses are read");
+    }
+    
+    @PostMapping("/ab")
+    @Transactional
+    public void createAB() {
+        A a = new A();
+        a.setRootString("a");
+        entityManager.persist(a);
+        B b = new B();
+        b.setRootString("b");
+        entityManager.persist(b);
+    }
+    
+    @GetMapping("/ab")
+    public List<Root> readAB() {
+        return entityManager.createQuery("select r from Root r", Root.class)
+                .getResultList();
+    }
+    
+    @PostMapping("/listener")
+    @Transactional
+    public void createListener() {
+        ToListen toListen = new ToListen();
+        entityManager.persist(toListen);
+    }
+    
+    @GetMapping("/listener")
+    public List<ToListen> readListener() {
+        return entityManager.createQuery("select l from ToListen l", ToListen.class)
+                .getResultList();
+    }
+    
+    @PostMapping("/locking")
+    @Transactional
+    public void createLockingEntity() {
+        OptimisticLockingEntity entity = new OptimisticLockingEntity();
+        entityManager.persist(entity);
+    }
+    
+    @PutMapping("/locking")
+    @Transactional
+    public void updateLockingEntity(@RequestBody OptimisticLockingEntity entity) {
+        entityManager.merge(entity);
+    }
+    
+    @GetMapping("/locking")
+    public List<OptimisticLockingEntity> readLockingEntity() {
+        return entityManager.createQuery("select l from OptimisticLockingEntity l", OptimisticLockingEntity.class)
+                .getResultList();
+    }
+    
+    @Transactional
+    @GetMapping("/locking/pessimistic")
+    public List<OptimisticLockingEntity> readLockingEntityPessimistic() {
+        TypedQuery<OptimisticLockingEntity> query = entityManager.createQuery("select l from OptimisticLockingEntity l", OptimisticLockingEntity.class);
+        query.setLockMode(LockModeType.PESSIMISTIC_FORCE_INCREMENT);
+        return query.getResultList();
     }
 
 }
